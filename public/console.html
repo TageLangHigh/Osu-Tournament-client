@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Matchdeck Regie</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/console.css">
+</head>
+<body>
+<header id="topbar">
+  <div class="brand"><span class="mark"></span>MATCHDECK</div>
+  <nav id="tabs">
+    <button data-tab="match" class="on">Match</button>
+    <button data-tab="tournament">Turnier</button>
+    <button data-tab="connect">Verbindungen</button>
+    <button data-tab="replays">Replays</button>
+  </nav>
+  <div id="chips"></div>
+</header>
+
+<main>
+  <section id="tab-match" class="tab on"><div id="matchView"></div></section>
+  <section id="tab-tournament" class="tab"><div id="tournamentView"></div></section>
+  <section id="tab-connect" class="tab"><div id="connectView"></div></section>
+  <section id="tab-replays" class="tab"><div id="replayView"></div></section>
+</main>
+
+<div id="toast" hidden></div>
+<script type="module" src="/console.js"></script>
+</body>
+</html>

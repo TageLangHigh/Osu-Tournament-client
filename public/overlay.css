@@ -1,0 +1,163 @@
+:root {
+  --ink: #0b0c10;
+  --panel: #14161c;
+  --panel-2: #1c1f27;
+  --line: #2b2f3a;
+  --text: #f2f3f6;
+  --muted: #9096a6;
+  --accent: #d7ff3f;
+  --team-a: #ff5a5f;
+  --team-b: #35a7ff;
+  --cut: 26px;
+  font-family: Bahnschrift, "DIN Alternate", "Segoe UI", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: transparent; color: var(--text); }
+
+#stage {
+  position: absolute; left: 0; top: 0; width: 1920px; height: 1080px;
+  transform-origin: 0 0; overflow: hidden;
+}
+
+#backdrop {
+  position: absolute; inset: 0; background: var(--ink); transition: opacity .35s;
+}
+#backdrop::after {
+  content: ""; position: absolute; inset: 0; opacity: .5;
+  background:
+    linear-gradient(115deg, color-mix(in srgb, var(--team-a) 16%, transparent) 0 18%, transparent 18.1%),
+    linear-gradient(295deg, color-mix(in srgb, var(--team-b) 16%, transparent) 0 18%, transparent 18.1%);
+}
+body.capture #backdrop { opacity: 0; }
+
+.scene {
+  position: absolute; inset: 0; opacity: 0; visibility: hidden;
+  transform: translateY(14px);
+  transition: opacity .35s ease, transform .45s cubic-bezier(.2, .8, .2, 1), visibility 0s .4s;
+}
+.scene.on { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
+
+.kicker { font-size: 24px; letter-spacing: .22em; text-transform: uppercase; color: var(--accent); }
+.team-a { --team: var(--team-a); }
+.team-b { --team: var(--team-b); }
+
+/* Spielansicht */
+#scoreHead {
+  position: absolute; left: 0; right: 0; top: 0; height: 122px; display: grid;
+  grid-template-columns: 1fr 340px 1fr; align-items: stretch;
+  background: linear-gradient(180deg, rgba(8, 9, 12, .97), rgba(8, 9, 12, .9));
+  border-bottom: 2px solid var(--line);
+}
+.side { position: relative; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 22px; padding: 0 30px; overflow: hidden; }
+.side.b { grid-template-columns: auto 1fr; }
+.side::before { content: ""; position: absolute; top: 0; bottom: 0; width: 10px; background: var(--team); }
+.side.a::before { left: 0; }
+.side.b::before { right: 0; }
+.side .name { font-size: 40px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.side.b .name { text-align: right; }
+.side .pips { display: flex; gap: 8px; margin-top: 8px; }
+.side.b .pips { justify-content: flex-end; }
+.pip { width: 34px; height: 9px; background: rgba(255, 255, 255, .13); transform: skewX(-22deg); transition: background .3s; }
+.pip.on { background: var(--team); box-shadow: 0 0 12px var(--team); }
+.side .total { font-size: 56px; font-weight: 700; letter-spacing: .01em; line-height: 1; }
+.side.lead .total { color: var(--team); }
+.centerbox { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-inline: 2px solid var(--line); }
+.centerbox .round { font-size: 20px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.centerbox .points { font-size: 52px; font-weight: 700; line-height: 1; display: flex; gap: 18px; }
+.centerbox .points b:first-child { color: var(--team-a); }
+.centerbox .points b:last-child { color: var(--team-b); }
+.centerbox .diff { font-size: 22px; color: var(--accent); height: 26px; }
+
+#fields { position: absolute; left: 0; right: 0; top: 124px; bottom: 134px; display: flex; gap: 6px; }
+body.capture #fields { display: none; }
+.teamfields { flex: 1; display: grid; gap: 6px; min-width: 0; }
+.field { position: relative; background: #0f1015; overflow: hidden; min-height: 0; min-width: 0; }
+.field canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.field .bg { position: absolute; inset: 0; background-size: cover; background-position: center; filter: brightness(.22); }
+.tag {
+  position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 14px; padding: 6px 16px 6px 14px;
+  background: rgba(8, 9, 12, .78); border-left: 6px solid var(--team); font-size: 25px; z-index: 2;
+}
+.tag .mods { font-size: 19px; color: var(--accent); }
+.field .lost {
+  position: absolute; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; z-index: 3;
+  background: rgba(8, 9, 12, .72); font-size: 30px; color: #ffb4b4;
+}
+.field.stalled .lost { display: flex; }
+
+#nowPlaying {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 132px; display: grid;
+  grid-template-columns: 150px 1fr 560px; background: rgba(8, 9, 12, .96); border-top: 2px solid var(--line);
+}
+.slotbadge { display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 700; font-size: 50px; color: #0b0c10; background: var(--team, var(--accent)); }
+.slotbadge small { font-size: 18px; letter-spacing: .08em; font-weight: 600; }
+.mapinfo { padding: 16px 28px; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+.mapinfo .title { font-size: 34px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mapinfo .sub { font-size: 22px; color: var(--muted); display: flex; gap: 26px; }
+.mapinfo .sub b { color: var(--text); font-weight: 600; }
+.ticker { border-left: 2px solid var(--line); padding: 12px 20px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; font-size: 20px; gap: 3px; }
+.ticker div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+.ticker b { color: var(--text); font-weight: 600; }
+
+#resultCard {
+  position: absolute; left: 50%; top: 50%; width: 1040px; transform: translate(-50%, -50%); z-index: 6;
+  background: rgba(10, 11, 15, .96); border: 2px solid var(--line); border-top: 8px solid var(--team, var(--accent)); padding: 28px 36px;
+}
+#resultCard h2 { font-size: 44px; margin: 4px 0 18px; }
+#resultCard .rows { display: grid; gap: 8px; }
+#resultCard .row { display: grid; grid-template-columns: 1fr 220px 130px 120px 90px; gap: 14px; font-size: 26px; align-items: center; padding: 6px 12px; border-left: 6px solid var(--team); background: var(--panel); }
+#resultCard .row b { font-weight: 700; text-align: right; }
+#resultCard .row span { text-align: right; color: var(--muted); }
+#resultCard .row span:first-child { text-align: left; color: var(--text); }
+
+/* Mappool */
+#sceneMappool { padding: 42px 56px; display: flex; flex-direction: column; gap: 22px; }
+.poolhead { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 24px; }
+.poolhead .tname { font-size: 44px; font-weight: 600; display: flex; align-items: center; gap: 20px; }
+.poolhead .tname.b { justify-content: flex-end; }
+.poolhead .tname span { display: inline-block; width: 14px; height: 46px; background: var(--team); transform: skewX(-14deg); }
+.prompt { text-align: center; }
+.prompt .what { font-size: 54px; font-weight: 700; color: var(--team, var(--accent)); line-height: 1.1; }
+.poolgrid { flex: 1; display: flex; flex-direction: column; gap: 12px; justify-content: center; min-height: 0; }
+.modrow { display: grid; grid-template-columns: 96px 1fr; gap: 12px; }
+.modlabel { display: flex; align-items: center; justify-content: center; font-size: 34px; font-weight: 700; background: var(--panel); color: var(--mod); border-left: 6px solid var(--mod); }
+.modcards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+.card { position: relative; height: 112px; background: var(--panel); border-bottom: 5px solid var(--line); padding: 12px 16px; overflow: hidden; transition: filter .3s, border-color .3s; display: flex; flex-direction: column; justify-content: center; }
+.card .cover { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: .3; }
+.card .slot { position: relative; font-size: 18px; color: var(--mod); font-weight: 700; letter-spacing: .08em; }
+.card .t { position: relative; font-size: 25px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .a { position: relative; font-size: 18px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card.ban { filter: saturate(.25) brightness(.5); }
+.card.pick, .card.protect, .card.ban { border-bottom-color: var(--team); }
+.card .state { position: absolute; right: 0; top: 0; padding: 3px 12px; font-size: 18px; font-weight: 700; letter-spacing: .1em; color: #0b0c10; background: var(--team); }
+.card.done-a::after, .card.done-b::after { content: ""; position: absolute; inset: 0; border: 3px solid var(--team); pointer-events: none; }
+.card.fresh { animation: flash 1.2s ease 2; }
+@keyframes flash { 50% { box-shadow: 0 0 0 4px var(--team), 0 0 34px var(--team); } }
+
+/* Intro und Sieger */
+#sceneIntro, #sceneWinner { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; }
+.vs { display: grid; grid-template-columns: 1fr 150px 1fr; width: 1640px; align-items: stretch; }
+.vsteam { padding: 38px 44px; background: var(--panel); border-top: 10px solid var(--team); min-height: 340px; }
+.vsteam h2 { font-size: 66px; font-weight: 700; line-height: 1.05; }
+.vsteam .seed { font-size: 24px; color: var(--muted); margin: 8px 0 22px; }
+.vsteam li { font-size: 32px; list-style: none; padding: 5px 0; }
+.vsteam ul { padding: 0; }
+.vsmark { display: flex; align-items: center; justify-content: center; font-size: 62px; font-weight: 700; color: var(--accent); }
+.eventname { font-size: 82px; font-weight: 700; text-align: center; line-height: 1.05; }
+.idle { font-size: 26px; color: var(--muted); }
+.winner-name { font-size: 142px; font-weight: 700; color: var(--team); line-height: 1; text-align: center; }
+.winner-score { font-size: 76px; font-weight: 700; }
+
+/* Bracket und Spielplan */
+#sceneBracket, #sceneSchedule { padding: 44px 56px; }
+#bracketSvg { width: 100%; height: 900px; margin-top: 18px; }
+#bracketSvg text { fill: var(--text); font-family: inherit; }
+.schedule { display: grid; gap: 10px; margin-top: 26px; }
+.sched-row { display: grid; grid-template-columns: 260px 1fr 80px 1fr 260px; gap: 18px; align-items: center; background: var(--panel); padding: 14px 22px; font-size: 32px; }
+.sched-row .time { color: var(--accent); font-weight: 700; }
+.sched-row .vsx { color: var(--muted); text-align: center; }
+.sched-row .right { text-align: right; }
+.sched-row .round { font-size: 22px; color: var(--muted); text-align: right; }
+.heading { font-size: 60px; font-weight: 700; }

@@ -1,0 +1,12 @@
+{
+  "name": "matchdeck",
+  "version": "0.1.0",
+  "description": "Turnier-Regie, Overlay und Multi-Spectate-Renderer für osu!-Turniere in einem Prozess",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node --test test/*.test.js"
+  }
+}

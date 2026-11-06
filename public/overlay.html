@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Matchdeck Overlay</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/overlay.css">
+</head>
+<body>
+<div id="stage">
+  <div id="backdrop"></div>
+  <section class="scene" data-scene="intro" id="sceneIntro"></section>
+  <section class="scene" data-scene="mappool" id="sceneMappool"></section>
+  <section class="scene" data-scene="gameplay" id="sceneGameplay">
+    <header id="scoreHead"></header>
+    <div id="fields"></div>
+    <footer id="nowPlaying"></footer>
+    <div id="resultCard" hidden></div>
+  </section>
+  <section class="scene" data-scene="winner" id="sceneWinner"></section>
+  <section class="scene" data-scene="bracket" id="sceneBracket"></section>
+  <section class="scene" data-scene="schedule" id="sceneSchedule"></section>
+  <audio id="audio" preload="auto"></audio>
+</div>
+<script type="module" src="/overlay.js"></script>
+</body>
+</html>
