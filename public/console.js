@@ -137,83 +137,109 @@ function lobbyHtml() {
 
 function renderMatchIdle() {
   const { tournament } = app;
-  if (!tournament) {
-    $('matchView').innerHTML = `<div class="welcome"><h1>Ein Fenster für das ganze Turnier.</h1>
-      <p class="muted">Regie, Mappool, Overlay und Spielansicht laufen hier zusammen. Mit der Demo siehst du in zwei Minuten ein komplettes Match, ganz ohne Konto oder Internet.</p>
-      <div class="row"><button class="btn primary" data-do="demo">Demo starten</button><button class="btn" data-tabjump="tournament">Eigenes Turnier anlegen</button></div></div>`;
-    return;
-  }
-  const open = tournament.matches.filter((match) => match.teamA && match.teamB && !match.result?.winner);
-  const teamName = (id) => esc(tournament.teams.find((team) => team.id === id)?.name ?? 'Offen');
-  $('matchView').innerHTML = `<div class="page"><h3>${esc(tournament.name)}</h3><div class="card-p"><h2>Match öffnen</h2><div class="matchlist">${open.map((match) => `<div class="matchrow"><span class="muted">${esc(match.id)}</span><span class="muted">${esc(match.title ?? '')}</span><span>${teamName(match.teamA)}</span><span class="muted">gegen</span><span>${teamName(match.teamB)}</span><span></span><button class="btn primary" data-open="${esc(match.id)}">Öffnen</button></div>`).join('') || '<div class="muted">Kein offenes Match. Lege im Tab Turnier Teams und ein Bracket an.</div>'}</div></div></div>`;
+  $('sideTitle').textContent = 'Match öffnen';
+  put('board', '<div class="t">Kein Match offen</div>');
+  $('roundLine').textContent = tournament?.name ?? '';
+  $('next').className = 'next';
+  put('next', '<div class="what">Bereit</div><div class="row"><button class="btn primary" data-do="demo">Demo starten</button><button class="btn" data-tabjump="tournament">Turnier anlegen</button></div>');
+  $('undo').disabled = true;
+  $('redo').disabled = true;
+  put('issues', '<div class="muted small">Keine Lobby verbunden.</div>');
+  put('games', '');
+  put('lobby', '<div class="muted small">Erst ein Match öffnen.</div>');
+  put('log', '');
+  const teamName = (id) => esc(tournament?.teams.find((team) => team.id === id)?.name ?? 'Offen');
+  const open = (tournament?.matches ?? []).filter((match) => match.teamA && match.teamB && !match.result?.winner);
+  put('pool', open.map((match) => `<button class="poolcard open" data-open="${esc(match.id)}"><b>${teamName(match.teamA)} gegen ${teamName(match.teamB)}</b><span>${esc(match.title ?? match.id)}</span></button>`).join('') || '<div class="muted small">Kein offenes Match. Lege im Tab Turnier Teams und ein Bracket an.</div>');
 }
 
-let lastMatchKey = '';
+const put = (id, html) => {
+  const node = $(id);
+  if (node && node.renderedHtml !== html) {
+    node.renderedHtml = html;
+    node.innerHTML = html;
+  }
+};
+
+function ensureDeck() {
+  if ($('deck')) return;
+  $('matchView').innerHTML = `<div class="deck" id="deck">
+    <div class="stagebox"><div class="stagefit" id="stageFit"><video id="liveVideo" autoplay muted playsinline hidden></video><iframe id="previewFrame" src="/overlay?preview" title="Spielansicht"></iframe></div></div>
+    <aside class="side">
+      <div class="pane" id="alertsPane" hidden><div id="alerts" class="stack"></div></div>
+      <div class="pane"><h2 id="sideTitle">Mappool</h2><div id="pool" class="stack"></div></div>
+      <div class="pane"><h2>Regelcheck</h2><div id="issues" class="stack"></div></div>
+      <div class="pane"><h2>Ergebnisse</h2><div class="games" id="games"></div></div>
+      <div class="pane"><h2>Automatik</h2><div id="autos" class="stack"></div></div>
+      <div class="pane"><h2>Protokoll</h2><div class="log" id="log"></div></div>
+    </aside>
+    <div class="control">
+      <div class="cell score"><div class="board" id="board"></div><div class="small muted" id="roundLine"></div><div class="row"><button class="btn" id="undo" data-do="undo" title="Strg+Z">Rückgängig</button><button class="btn" id="redo" data-do="redo" title="Strg+Y">Wiederholen</button></div></div>
+      <div class="cell"><div class="next" id="next"></div></div>
+      <div class="cell"><h2>Lobby</h2><div id="lobby" class="stack"></div></div>
+      <div class="cell chat"><div class="chatbox" id="chatBox"></div><form id="chatForm" class="row"><input id="chatInput" class="grow" style="width:auto" placeholder="Nachricht oder !mp Befehl" aria-label="Nachricht an die Lobby" autocomplete="off"><button class="btn">Senden</button></form></div>
+      <div class="cell"><h2>Szene</h2><div class="scenes" id="scenes"></div></div>
+    </div></div>`;
+  const stage = document.querySelector('.stagebox');
+  new ResizeObserver(([entry]) => {
+    const { width, height } = entry.contentRect;
+    const scale = Math.min(width / 16, height / 9);
+    $('stageFit').style.width = `${scale * 16}px`;
+    $('stageFit').style.height = `${scale * 9}px`;
+  }).observe(stage);
+}
+
+let captureTried = 0;
+async function syncLiveVideo() {
+  const video = $('liveVideo');
+  const wanted = app.settings.gameplaySource === 'capture' && navigator.userAgent.includes('Electron');
+  if (!wanted) {
+    video.srcObject?.getTracks().forEach((track) => track.stop());
+    video.srcObject = null;
+    video.hidden = true;
+    return;
+  }
+  if (video.srcObject?.active || Date.now() - captureTried < 5000) return;
+  captureTried = Date.now();
+  try {
+    video.srcObject = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 60 }, audio: false });
+    video.hidden = false;
+  } catch {
+    video.hidden = true; // osu!tourney läuft noch nicht, der nächste Versuch kommt von selbst.
+  }
+}
+
 function renderMatch() {
+  ensureDeck();
+  syncLiveVideo();
+  put('scenes', SCENES.map(([id, label]) => `<button class="btn ${app.scenePin === id ? 'pinned' : app.scene === id ? 'live' : ''}" data-scene="${id}">${label}</button>`).join(''));
+  put('autos', [['autoSend', 'Map und Mods beim Pick setzen'], ['autoStart', 'Bei allen bereit automatisch starten'], ['autoConfirm', 'Saubere Ergebnisse automatisch werten']].map(([key, label]) => `<label class="check small"><input type="checkbox" data-setting="${key}" ${app.settings[key] ? 'checked' : ''}>${label}</label>`).join(''));
+  $('alertsPane').hidden = !app.alerts.length;
+  put('alerts', app.alerts.map((item) => `<div class="alert ${item.level}"><span class="grow">${esc(item.text)}</span>${item.action ? `<button class="btn danger" data-alert="${esc(item.id)}">${esc(item.action.label)}</button>` : ''}<button class="btn" data-dismiss="${esc(item.id)}" aria-label="Schließen">✕</button></div>`).join(''));
+
+  const chat = $('chatBox');
+  const follow = chat.scrollTop + chat.clientHeight >= chat.scrollHeight - 30;
+  put('chatBox', app.chat.map((line) => `<div class="line ${line.from === 'BanchoBot' ? 'bot' : ''}"><b>${esc(line.from)}</b> ${esc(line.text)}</div>`).join(''));
+  if (follow) chat.scrollTop = chat.scrollHeight;
+
   if (!app.match) {
-    lastMatchKey = '';
     renderMatchIdle();
     return;
   }
   const { state, config, round } = app.match;
   const step = nextStepHtml();
-  const typing = document.activeElement?.id;
-  const keep = ['rollA', 'rollB', 'attachId', 'chatInput'].includes(typing) ? document.activeElement : null;
-  const savedChat = $('chatInput')?.value ?? '';
-  const savedRoll = [$('rollA')?.value, $('rollB')?.value];
-  const savedAttach = $('attachId')?.value ?? '';
-  const chatScrolledUp = $('chatBox') && $('chatBox').scrollTop + $('chatBox').clientHeight < $('chatBox').scrollHeight - 30;
-  const chatTop = $('chatBox')?.scrollTop;
-
-  if (!$('deck') || lastMatchKey !== app.match.id) {
-    lastMatchKey = app.match.id;
-    $('matchView').innerHTML = `<div class="deck" id="deck">
-      <div class="col">
-        <div class="pane"><div class="board" id="board"></div><div class="small muted" id="roundLine"></div></div>
-        <div class="pane"><div class="next" id="next"></div><div class="row"><button class="btn" id="undo" data-do="undo" title="Strg+Z">Rückgängig</button><button class="btn" id="redo" data-do="redo" title="Strg+Y">Wiederholen</button></div></div>
-        <div class="pane" id="alertsPane"><h2>Meldungen</h2><div id="alerts" style="display:flex;flex-direction:column;gap:5px"></div></div>
-        <div class="pane"><h2>Regelcheck</h2><div id="issues" style="display:flex;flex-direction:column;gap:4px"></div></div>
-        <div class="pane"><h2>Automatik</h2><div id="autos" style="display:flex;flex-direction:column;gap:5px"></div></div>
-      </div>
-      <div class="col mid">
-        <div class="pane"><h2>Mappool</h2><div id="pool" style="display:flex;flex-direction:column;gap:6px"></div></div>
-        <div class="pane fill"><h2>Ergebnisse</h2><div class="games" id="games"></div></div>
-        <div class="pane"><h2>Protokoll</h2><div class="log" id="log"></div></div>
-      </div>
-      <div class="col">
-        <div class="pane"><div class="preview"><iframe id="previewFrame" src="/overlay?preview&mute" title="Overlay-Vorschau"></iframe></div><div class="scenes" id="scenes"></div></div>
-        <div class="pane"><h2>Lobby</h2><div id="lobby" style="display:flex;flex-direction:column;gap:4px"></div></div>
-        <div class="pane fill"><h2>Chat</h2><div class="chatbox" id="chatBox"></div><form id="chatForm" class="row"><input id="chatInput" class="grow" style="width:auto" placeholder="Nachricht oder !mp Befehl" aria-label="Nachricht an die Lobby" autocomplete="off"><button class="btn">Senden</button></form></div>
-      </div></div>`;
-  }
-
-  $('board').innerHTML = `<div class="t a">${esc(config.teams.a.name)}</div><div class="p">${state.points.a} : ${state.points.b}</div><div class="t b">${esc(config.teams.b.name)}</div>`;
+  $('sideTitle').textContent = 'Mappool';
+  put('board', `<div class="t a">${esc(config.teams.a.name)}</div><div class="p">${state.points.a} : ${state.points.b}</div><div class="t b">${esc(config.teams.b.name)}</div>`);
   $('roundLine').textContent = `${round} · Best of ${state.rules.bestOf} · ${{ score: 'Score', accuracy: 'Accuracy', combo: 'Combo', misses: 'Misses' }[state.rules.winCondition]}`;
-  const nextBox = $('next');
-  nextBox.className = `next ${step.cls ?? ''}`;
-  nextBox.innerHTML = step.html;
+  $('next').className = `next ${step.cls ?? ''}`;
+  put('next', step.html);
   $('undo').disabled = !state.canUndo;
   $('redo').disabled = !state.canRedo;
-  $('alertsPane').hidden = !app.alerts.length;
-  $('alerts').innerHTML = app.alerts.map((item) => `<div class="alert ${item.level}"><span class="grow">${esc(item.text)}</span>${item.action ? `<button class="btn danger" data-alert="${esc(item.id)}">${esc(item.action.label)}</button>` : ''}<button class="btn" data-dismiss="${esc(item.id)}" aria-label="Schließen">✕</button></div>`).join('');
-  $('issues').innerHTML = issuesHtml();
-  $('autos').innerHTML = [['autoSend', 'Map und Mods beim Pick setzen'], ['autoStart', 'Bei allen bereit automatisch starten'], ['autoConfirm', 'Saubere Ergebnisse automatisch werten']].map(([key, label]) => `<label class="check small"><input type="checkbox" data-setting="${key}" ${app.settings[key] ? 'checked' : ''}>${label}</label>`).join('');
-  $('pool').innerHTML = poolHtml();
-  $('games').innerHTML = gamesHtml();
-  $('lobby').innerHTML = lobbyHtml();
-  $('scenes').innerHTML = `${SCENES.map(([id, label]) => `<button class="btn ${app.scenePin === id ? 'pinned' : app.scene === id ? 'live' : ''}" data-scene="${id}">${label}</button>`).join('')}`;
-  const log = app.match.log.slice(-14).reverse().map((event) => `<div>${new Date(event.at).toLocaleTimeString('de-DE')} ${esc(event.by)} ${esc(event.t)} ${esc(event.slot ?? event.team ?? '')}</div>`).join('');
-  $('log').innerHTML = log;
-
-  const chat = $('chatBox');
-  chat.innerHTML = app.chat.map((line) => `<div class="line ${line.from === 'BanchoBot' ? 'bot' : ''}"><b>${esc(line.from)}</b> ${esc(line.text)}</div>`).join('');
-  if (chatScrolledUp) chat.scrollTop = chatTop;
-  else chat.scrollTop = chat.scrollHeight;
-
-  if ($('chatInput')) $('chatInput').value = savedChat;
-  if ($('rollA')) [$('rollA').value, $('rollB').value] = savedRoll.map((value) => value ?? '');
-  if ($('attachId')) $('attachId').value = savedAttach;
-  if (keep && $(keep.id)) $(keep.id).focus();
+  put('issues', issuesHtml());
+  put('pool', poolHtml());
+  put('games', gamesHtml());
+  put('lobby', lobbyHtml());
+  put('log', app.match.log.slice(-14).reverse().map((event) => `<div>${new Date(event.at).toLocaleTimeString('de-DE')} ${esc(event.by)} ${esc(event.t)} ${esc(event.slot ?? event.team ?? '')}</div>`).join(''));
 }
 
 /* Turnier-Ansicht */

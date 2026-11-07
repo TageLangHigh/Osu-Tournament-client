@@ -1,17 +1,14 @@
 # Matchdeck
 
-Turnier-Regie, Overlay und Spielansicht für osu!-Turniere in einem Programm. Für offizielles Bancho stable. Kein offizielles osu!-Produkt.
+Desktop-App für osu!-Turniere: Spielansicht, Regie und Overlay in einem Fenster. Für offizielles Bancho stable. Kein offizielles osu!-Produkt.
 
 ## Start
 
-Node.js 22 oder neuer installieren, dann `Matchdeck.bat` doppelklicken. Fremdpakete gibt es nicht.
+`Matchdeck.exe` aus den [Releases](https://github.com/TageLangHigh/Osu-Tournament-client/releases) laden und doppelklicken. Sie ist nicht signiert, Windows warnt deshalb beim ersten Start: „Weitere Informationen“, dann „Trotzdem ausführen“.
 
-```bash
-node server/index.js
-```
+Aus dem Quellcode: `npm install`, dann `npm run app`. Die Datei baust du mit `npm run build:exe`.
 
-- Regie: <http://127.0.0.1:7270/>
-- Overlay für OBS: <http://127.0.0.1:7270/overlay> als Browserquelle in Leinwandgröße
+- Overlay für OBS, solange die App läuft: <http://127.0.0.1:7270/overlay> als Browserquelle in Leinwandgröße
 
 ## Erste Schritte
 

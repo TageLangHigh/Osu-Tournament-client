@@ -19,7 +19,7 @@ export class Stage extends EventEmitter {
       hash, mods, rate, length, audio, title,
       startAt: Date.now() + LEAD_IN_MS - firstObject / rate,
       slots: slots.map((slot) => ({
-        ...slot, sentFrame: 0, sentMark: 0, sentTimeline: 0, cut: false,
+        ...slot, sentFrame: 0, sentMark: 0, sentTimeline: 0, sentPoint: 0, cut: false,
       })),
     };
     this.timer = setInterval(() => this.tick(), TICK_MS);
@@ -40,7 +40,7 @@ export class Stage extends EventEmitter {
   backlog() {
     const stage = this.current;
     if (!stage) return null;
-    return stage.slots.map((slot) => ({ frames: slot.frames.slice(0, slot.sentFrame), marks: slot.marks.slice(0, slot.sentMark) }));
+    return stage.slots.map((slot) => ({ frames: slot.frames.slice(0, slot.sentFrame), marks: slot.marks.slice(0, slot.sentMark), points: slot.timeline.slice(0, slot.sentPoint) }));
   }
 
   songTime(now = Date.now()) {
@@ -68,10 +68,13 @@ export class Stage extends EventEmitter {
       while (frameEnd < slot.frames.length && slot.frames[frameEnd][0] <= horizon) frameEnd++;
       let markEnd = slot.sentMark;
       while (markEnd < slot.marks.length && slot.marks[markEnd].t <= horizon) markEnd++;
-      if (frameEnd > slot.sentFrame || markEnd > slot.sentMark) {
-        chunk.push({ index, frames: slot.frames.slice(slot.sentFrame, frameEnd), marks: slot.marks.slice(slot.sentMark, markEnd) });
+      let pointEnd = slot.sentPoint;
+      while (pointEnd < slot.timeline.length && slot.timeline[pointEnd].t <= horizon) pointEnd++;
+      if (frameEnd > slot.sentFrame || markEnd > slot.sentMark || pointEnd > slot.sentPoint) {
+        chunk.push({ index, frames: slot.frames.slice(slot.sentFrame, frameEnd), marks: slot.marks.slice(slot.sentMark, markEnd), points: slot.timeline.slice(slot.sentPoint, pointEnd) });
         slot.sentFrame = frameEnd;
         slot.sentMark = markEnd;
+        slot.sentPoint = pointEnd;
       }
       while (slot.sentTimeline < slot.timeline.length && slot.timeline[slot.sentTimeline].t <= song) slot.sentTimeline++;
     });

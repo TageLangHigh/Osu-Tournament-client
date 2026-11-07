@@ -1,12 +1,43 @@
 {
   "name": "matchdeck",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Turnier-Regie, Overlay und Multi-Spectate-Renderer für osu!-Turniere in einem Prozess",
   "type": "module",
   "private": true,
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "node server/index.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "app": "electron .",
+    "build:exe": "electron-builder --win portable --x64"
+  },
+  "main": "desktop/main.mjs",
+  "author": "TageLangHigh",
+  "build": {
+    "appId": "de.matchdeck.client",
+    "productName": "Matchdeck",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "desktop/**",
+      "server/**",
+      "shared/**",
+      "public/**",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable",
+      "signAndEditExecutable": false
+    },
+    "portable": {
+      "artifactName": "Matchdeck-${version}.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "^38.8.6",
+    "electron-builder": "^26.18.0"
   }
 }

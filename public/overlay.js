@@ -47,20 +47,13 @@ const pips = (side, state) => {
 
 function renderHead() {
   const teams = teamsOf();
-  const head = $('scoreHead');
-  if (!teams) {
-    const names = (side) => esc((stage?.slots ?? []).filter((slot) => slot.side === side).map((slot) => slot.name).join(', '));
-    head.innerHTML = `
-      <div class="side a team-a" id="sideA"><div class="name">${names('a')}</div><div class="total" id="totalA">0</div></div>
-      <div class="centerbox"><span class="round">Replay</span><div class="diff" id="diff"></div></div>
-      <div class="side b team-b" id="sideB"><div class="total" id="totalB">0</div><div class="name">${names('b')}</div></div>`;
-    return;
-  }
-  const { state, round } = app.match;
-  head.innerHTML = `
-    <div class="side a team-a" id="sideA"><div><div class="name">${esc(teams.a.name)}</div><div class="pips">${pips('a', state)}</div></div><div class="total" id="totalA">0</div></div>
-    <div class="centerbox"><span class="round">${esc(round)} · BO${state.rules.bestOf}</span><div class="points"><b>${state.points.a}</b><span>:</span><b>${state.points.b}</b></div><div class="diff" id="diff"></div></div>
-    <div class="side b team-b" id="sideB"><div class="total" id="totalB">0</div><div><div class="name">${esc(teams.b.name)}</div><div class="pips">${pips('b', state)}</div></div></div>`;
+  const state = app?.match?.state;
+  const names = (side) => teams?.[side].name ?? (stage?.slots ?? []).filter((slot) => slot.side === side).map((slot) => slot.name).join(', ');
+  const stars = (side) => (state ? pips(side, state) : '');
+  $('scoreHead').innerHTML = `
+    <div class="hside a team-a"><div class="hrow"><span class="teamlabel">TEAM RED</span><span class="pips">${stars('a')}</span></div><div class="teamname">${esc(names('a'))}</div></div>
+    <div class="hcenter"><div class="logo">${esc(app?.tournament?.acronym ?? '')}</div><div class="roundbox">${esc(app?.match?.round ?? 'Replay')}</div></div>
+    <div class="hside b team-b"><div class="hrow"><span class="pips">${stars('b')}</span><span class="teamlabel">TEAM BLUE</span></div><div class="teamname">${esc(names('b'))}</div></div>`;
 }
 
 function renderNowPlaying() {
@@ -68,17 +61,20 @@ function renderNowPlaying() {
   const game = app?.match?.state.games.at(-1);
   const entry = game && app.match.config.pool.find((item) => item.slot === game.slot);
   const chat = (app?.chat ?? []).filter((line) => line.from !== 'BanchoBot').slice(-3);
-  const teamClass = game?.team ? sideName[game.team] : '';
   const ticker = `<div class="ticker">${chat.map((line) => `<div><b>${esc(line.from)}</b> ${esc(line.text)}</div>`).join('')}</div>`;
-  if (!entry) {
-    box.innerHTML = `<div class="slotbadge">${stage ? '<small>REPLAY</small>' : ''}</div><div class="mapinfo"><div class="title">${esc(stage?.title ?? app?.tournament?.name ?? '')}</div></div>${ticker}`;
-    return;
+  const background = mapData?.media?.background ?? entry?.cover;
+  const cover = background ? `style="background-image:linear-gradient(90deg, rgba(8,9,12,.82), rgba(8,9,12,.35)), url('${esc(background)}')"` : '';
+  const title = entry ? `${entry.artist ? `${entry.artist} – ` : ''}${entry.title ?? `Map ${entry.mapId}`}` : stage?.title ?? app?.tournament?.name ?? '';
+  const minutes = entry?.length ? `${Math.floor(entry.length / 60)}:${String(Math.round(entry.length % 60)).padStart(2, '0')}` : '';
+  const by = game ? (game.team ? `Pick von ${app.match.config.teams[game.team].name}` : 'Tiebreaker') : '';
+  const html = `
+    <div class="mapbanner ${game?.team ? sideName[game.team] : ''}" ${cover}><div class="title">${esc(title)}</div><div class="sub">${entry?.creator ? `mapper <b>${esc(entry.creator)}</b>` : ''} ${entry?.version ? `difficulty <b>${esc(entry.version)}</b>` : ''}</div></div>
+    <div class="mapstats">${entry?.cs ? `<div>CS <b>${entry.cs}</b> / AR <b>${entry.ar}</b> / OD <b>${entry.od}</b></div>` : '<div></div>'}<div>${minutes ? `Length <b>${minutes}</b>` : ''}</div><div>${entry?.stars ? `Star Rating <b>${entry.stars.toFixed(2)}*</b>` : ''}</div><div>${entry?.bpm ? `BPM <b>${Math.round(entry.bpm)}</b>` : ''}</div></div>
+    <div class="pickinfo ${game?.team ? sideName[game.team] : ''}">${entry ? `<div class="pslot">${esc(entry.slot)}</div><div class="pby">${esc(by)}</div>` : ''}</div>${ticker}`;
+  if (box.renderedHtml !== html) {
+    box.renderedHtml = html;
+    box.innerHTML = html;
   }
-  const by = game.team ? `Pick von ${esc(app.match.config.teams[game.team].name)}` : 'Tiebreaker';
-  box.innerHTML = `
-    <div class="slotbadge ${teamClass}">${esc(entry.slot)}<small>${by.length > 18 ? '' : by}</small></div>
-    <div class="mapinfo"><div class="title">${esc(entry.artist ?? '')}${entry.artist ? ' – ' : ''}${esc(entry.title ?? `Map ${entry.mapId}`)} [${esc(entry.version ?? '')}]</div>
-    <div class="sub"><span>${by}</span>${entry.stars ? `<span><b>${entry.stars.toFixed(2)}</b> Sterne</span>` : ''}${entry.bpm ? `<span><b>${Math.round(entry.bpm)}</b> BPM</span>` : ''}${entry.cs ? `<span>CS <b>${entry.cs}</b> AR <b>${entry.ar}</b> OD <b>${entry.od}</b></span>` : ''}</div></div>${ticker}`;
 }
 
 function renderResultCard() {
@@ -226,14 +222,19 @@ function applyTheme() {
   root.setProperty('--team-b', theme.teamB);
 }
 
+let renderKey = '';
 function renderAll() {
   if (!app) return;
+  renderNowPlaying();
+  // Chatzeilen und andere Kleinigkeiten dürfen die Szenen nicht neu aufbauen.
+  const key = JSON.stringify([app.scene, app.match?.id, app.match?.state, app.settings.gameplaySource, app.tournament?.theme, app.tournament?.matches, stage?.startAt, freshSlot]);
+  if (key === renderKey) return;
+  renderKey = key;
   applyTheme();
   const scene = fixedScene ?? app.scene;
   document.body.classList.toggle('capture', app.settings.gameplaySource === 'capture' && scene === 'gameplay');
   document.querySelectorAll('.scene').forEach((node) => node.classList.toggle('on', node.dataset.scene === scene));
   renderHead();
-  renderNowPlaying();
   renderResultCard();
   renderMappool();
   renderIntro();
@@ -241,17 +242,12 @@ function renderAll() {
   renderBracket();
   renderSchedule();
   syncFields();
+  renderLive();
 }
 
 /* Spielfelder */
 
 const colorOf = (side) => (side === 'a' ? getComputedStyle(document.documentElement).getPropertyValue('--team-a') : getComputedStyle(document.documentElement).getPropertyValue('--team-b')).trim();
-
-function gridFor(count, width, height) {
-  const rows = count <= 1 ? 1 : count === 2 ? 2 : 2;
-  const cols = count <= 2 ? 1 : Math.ceil(count / 2);
-  return { rows, cols, width, height };
-}
 
 function syncFields() {
   const slots = stage?.slots ?? [];
@@ -271,9 +267,8 @@ function syncFields() {
     const own = slots.map((slot, index) => ({ slot, index })).filter(({ slot }) => slot.side === side);
     const column = document.createElement('div');
     column.className = 'teamfields';
-    const { rows, cols } = gridFor(own.length);
-    column.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
-    column.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    // Wie im Turnier-Layout: drei Spieler stehen als einer oben, zwei unten.
+    column.dataset.count = own.length;
     for (const { slot, index } of own) {
       const node = document.createElement('div');
       node.className = `field ${sideName[side]}`;
@@ -318,7 +313,7 @@ async function syncSkin() {
 
 let pendingBacklog = null;
 function applyBacklog(chunks) {
-  chunks.forEach((chunk, index) => fields[index]?.view.push(chunk.frames, chunk.marks));
+  chunks.forEach((chunk, index) => fields[index]?.view.push(chunk.frames, chunk.marks, chunk.points));
 }
 
 async function loadStage(description) {
@@ -352,7 +347,7 @@ function stopAudio() {
 }
 
 function serverNow() {
-  return Date.now() + clockOffset;
+  return performance.now() + clockOffset;
 }
 
 function syncAudio(time) {
@@ -360,7 +355,10 @@ function syncAudio(time) {
   if (!stage?.audio || muted || !audio.src) return;
   if (time < 0) return;
   if (audio.paused) audio.play().catch(() => {});
-  if (Math.abs(audio.currentTime * 1000 - time) > 120) audio.currentTime = time / 1000;
+  // Kleine Abweichungen über das Tempo ausgleichen. Springen hört man, das hier nicht.
+  const drift = audio.currentTime * 1000 - time;
+  if (Math.abs(drift) > 300) audio.currentTime = time / 1000;
+  else audio.playbackRate = stage.rate * (1 - Math.max(-0.03, Math.min(0.03, drift / 2000)));
 }
 
 function frame() {
@@ -374,41 +372,46 @@ function frame() {
       field.node.classList.toggle('stalled', field.view.stalled(time));
     }
     syncAudio(time);
+    showTotals();
   }
 }
 requestAnimationFrame(frame);
 
-function renderLive() {
-  if (!live) return;
+function showTotals() {
   const totals = { a: 0, b: 0 };
-  live.players.forEach((player, index) => {
-    if (player.side) totals[player.side] += player.score ?? 0;
-    const field = live.source === 'stage' ? fields[index] : null;
-    if (!field) return;
-    if (field.view) field.view.hud = { combo: player.combo ?? 0, score: player.score ?? 0, accuracy: player.accuracy ?? 100 };
-  });
-  shown.a += (totals.a - shown.a) * 0.45;
-  shown.b += (totals.b - shown.b) * 0.45;
-  const a = $('totalA');
-  const b = $('totalB');
-  if (!a || !b) return;
-  a.textContent = number(shown.a);
-  b.textContent = number(shown.b);
-  $('sideA').classList.toggle('lead', totals.a > totals.b);
-  $('sideB').classList.toggle('lead', totals.b > totals.a);
+  for (const field of fields) if (field?.view) totals[field.side] += field.view.hud.score;
+  writeTotals(totals);
+}
+
+function writeTotals(totals) {
+  $('totalA').textContent = number(totals.a);
+  $('totalB').textContent = number(totals.b);
   const gap = Math.abs(totals.a - totals.b);
-  $('diff').textContent = gap ? `+${number(gap)}` : '';
+  const leader = totals.a > totals.b ? 'a' : 'b';
+  const share = Math.min(1, gap / Math.max(50000, Math.max(totals.a, totals.b) * 0.5));
+  $('leadA').style.transform = `scaleX(${leader === 'a' ? share : 0})`;
+  $('leadB').style.transform = `scaleX(${leader === 'b' ? share : 0})`;
+  $('gapA').textContent = leader === 'a' && gap >= 1 ? `+${number(gap)}` : '';
+  $('gapB').textContent = leader === 'b' && gap >= 1 ? `+${number(gap)}` : '';
+}
+
+function renderLive() {
+  // Die Bühne rechnet pro Bild selbst. Von außen kommen nur die Daten aus osu!tourney.
+  if (live?.source !== 'tosu') return;
+  const totals = { a: 0, b: 0 };
+  for (const player of live.players) totals[player.side] += player.score ?? 0;
+  writeTotals(totals);
 }
 
 /* Datenstrom */
 
 const events = new EventSource(`/events?kind=${params.has('preview') ? 'preview' : 'overlay'}`);
 events.addEventListener('hello', (message) => {
-  clockOffset = JSON.parse(message.data).serverNow - Date.now();
+  clockOffset = JSON.parse(message.data).serverNow - performance.now();
 });
 events.addEventListener('time', (message) => {
-  const measured = JSON.parse(message.data).serverNow - Date.now();
-  clockOffset += (measured - clockOffset) * 0.2;
+  const measured = JSON.parse(message.data).serverNow - performance.now();
+  if (Math.abs(measured - clockOffset) > 40) clockOffset += (measured - clockOffset) * 0.2;
 });
 events.addEventListener('state', (message) => {
   const previous = app?.match?.state.picks.length ?? 0;
@@ -434,7 +437,7 @@ events.addEventListener('backlog', (message) => {
   else pendingBacklog = chunks;
 });
 events.addEventListener('frames', (message) => {
-  for (const chunk of JSON.parse(message.data)) fields[chunk.index]?.view?.push(chunk.frames, chunk.marks);
+  for (const chunk of JSON.parse(message.data)) fields[chunk.index]?.view?.push(chunk.frames, chunk.marks, chunk.points);
 });
 events.addEventListener('live', (message) => {
   live = JSON.parse(message.data);

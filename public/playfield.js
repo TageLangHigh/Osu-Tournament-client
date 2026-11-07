@@ -62,6 +62,7 @@ export class Playfield {
     this.combos = FALLBACK_COMBOS;
     this.frames = [];
     this.marks = [];
+    this.points = [];
     this.missed = new Set();
     this.cut = false;
     this.first = 0;
@@ -100,7 +101,8 @@ export class Playfield {
     this.bodies = new Map();
   }
 
-  push(frames = [], marks = []) {
+  push(frames = [], marks = [], points = []) {
+    for (const point of points) this.points.push(point);
     for (const frame of frames) this.frames.push(frame);
     for (const mark of marks) {
       this.marks.push(mark);
@@ -456,6 +458,22 @@ export class Playfield {
     ctx.fill();
   }
 
+  updateHud(time) {
+    const { points, hud } = this;
+    if (!points.length || points[0].t > time) return;
+    let low = 0;
+    let high = points.length - 1;
+    while (low < high) {
+      const mid = (low + high + 1) >> 1;
+      if (points[mid].t <= time) low = mid;
+      else high = mid - 1;
+    }
+    const point = points[low];
+    hud.combo = point.combo;
+    hud.accuracy = point.accuracy * 100;
+    hud.score += (point.score - hud.score) * 0.22;
+  }
+
   /** Zeichnet Text mit den Ziffern des Skins. Fehlen sie, springt die Schrift ein. */
   drawDigits(ctx, table, text, x, y, height, align, overlap = 0) {
     const glyphs = [...text].map((char) => table?.[char]);
@@ -477,20 +495,60 @@ export class Playfield {
   }
 
   drawHud(ctx, time) {
-    const { canvas, skin } = this;
+    const { canvas, skin, points, prepared } = this;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = 1;
     const unit = canvas.height / 480;
     const pad = 10 * unit;
     const { combo, score, accuracy } = this.hud;
-    this.drawDigits(ctx, skin?.combo, `${combo}x`, 12 * unit, canvas.height - 44 * unit, 36 * unit, 'left', skin?.comboOverlap ?? 0);
-    this.drawDigits(ctx, skin?.score, String(Math.round(score)).padStart(7, '0'), canvas.width - pad, pad, 34 * unit, 'right', skin?.scoreOverlap ?? 0);
-    this.drawDigits(ctx, skin?.score, `${accuracy.toFixed(2)}%`, canvas.width - pad, pad + 38 * unit, 18 * unit, 'right', skin?.scoreOverlap ?? 0);
+
+    const progress = Math.max(0, Math.min(1, time / (prepared.length || 1)));
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.fillRect(0, 0, canvas.width * progress, 5 * unit);
+
+    this.drawDigits(ctx, skin?.score, String(Math.round(score)).padStart(8, '0'), canvas.width - pad, 12 * unit, 30 * unit, 'right', skin?.scoreOverlap ?? 0);
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.beginPath();
+    ctx.arc(20 * unit, 28 * unit, 8 * unit, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = `600 ${20 * unit}px Bahnschrift, "Segoe UI", sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(accuracy.toFixed(2), 36 * unit, 29 * unit);
+    this.drawDigits(ctx, skin?.combo, `${combo}x`, 10 * unit, canvas.height - 44 * unit, 36 * unit, 'left', skin?.comboOverlap ?? 0);
+
+    // Tasten rechts: K1, K2, M1, M2
     const keys = this.cursorAt(time)?.[2] ?? 0;
-    [[keys & 1, 0], [keys & 2, 1]].forEach(([active, i]) => {
-      ctx.fillStyle = active ? this.color : 'rgba(255,255,255,0.16)';
-      ctx.fillRect(canvas.width - 22 * unit, 200 * unit + i * 34 * unit, 14 * unit, 28 * unit);
+    const lit = [Boolean(keys & 4), Boolean(keys & 8), Boolean(keys & 1) && !(keys & 4), Boolean(keys & 2) && !(keys & 8)];
+    lit.forEach((active, i) => {
+      ctx.fillStyle = active ? '#ffd24a' : 'rgba(255,255,255,0.88)';
+      ctx.fillRect(canvas.width - 22 * unit, 190 * unit + i * 27 * unit, 18 * unit, 23 * unit);
     });
+
+    // Hit-Error-Leiste unten in der Mitte
+    const { w300, w100, w50 } = prepared.windows;
+    const centre = canvas.width / 2;
+    const y = canvas.height - 8 * unit;
+    const px = 46 * unit / w50;
+    [['#d9a84a', w50], ['#58e07a', w100], ['#5ac8ff', w300]].forEach(([color, width]) => {
+      ctx.fillStyle = color;
+      ctx.fillRect(centre - width * px, y - 1.5 * unit, width * 2 * px, 3 * unit);
+    });
+    let index = this.pointIndex ?? 0;
+    while (index + 1 < points.length && points[index + 1].t <= time) index++;
+    if (points[index]?.t > time) index = 0;
+    this.pointIndex = index;
+    ctx.fillStyle = '#fff';
+    for (let i = index; i >= 0 && i > index - 12; i--) {
+      const point = points[i];
+      if (!point || point.offset === null || point.offset === undefined || point.t > time) continue;
+      const age = time - point.t;
+      if (age > 2500) break;
+      ctx.globalAlpha = 1 - age / 2500;
+      ctx.fillRect(centre + point.offset * px - unit, y - 6 * unit, 2 * unit, 12 * unit);
+    }
+    ctx.globalAlpha = 1;
   }
 
   draw(time) {
@@ -513,6 +571,7 @@ export class Playfield {
 
     this.drawMarks(ctx, time);
     this.drawCursor(ctx, time);
+    this.updateHud(time);
     this.drawHud(ctx, time);
   }
 

@@ -112,6 +112,7 @@ export function judge(prepared, frames) {
     let value;
     let broke = false;
     let time = object.t;
+    const offset = heads.get(index)?.offset ?? null;
     if (object.type === 'circle') {
       const head = heads.get(index);
       const size = head?.hit ? Math.abs(head.offset) : Infinity;
@@ -138,7 +139,7 @@ export function judge(prepared, frames) {
     const fraction = judged / total;
     const score = Math.round(700000 * (comboScore / comboPotential) + 300000 * Math.pow(accuracy, 10) * fraction);
 
-    timeline.push({ t: time, score, combo, accuracy, miss: counts.miss, ...counts });
+    timeline.push({ t: time, score, combo, accuracy, miss: counts.miss, offset, ...counts });
     if (value !== 300 || broke) {
       const [x, y] = object.type === 'slider' ? object.path.at(-1) : [object.x, object.y];
       marks.push({ t: time, x, y, value, broke: value !== 0 && broke });

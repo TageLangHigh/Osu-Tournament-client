@@ -161,3 +161,55 @@ body.capture #fields { display: none; }
 .sched-row .right { text-align: right; }
 .sched-row .round { font-size: 22px; color: var(--muted); text-align: right; }
 .heading { font-size: 60px; font-weight: 700; }
+
+/* Gameplay wie im Turnier-Stream */
+#sceneGameplay { background: #050507; }
+body.capture #sceneGameplay { background: transparent; }
+#scoreHead { height: 136px; display: grid; grid-template-columns: 1fr 240px 1fr; background: #050507; border-bottom: 1px solid rgba(255,255,255,.75); padding: 18px 28px; align-items: start; }
+.hside { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.hside::before { display: none; }
+.hside.b { align-items: flex-end; }
+.hrow { display: flex; align-items: center; gap: 10px; }
+.teamlabel { background: var(--team); color: #fff; font-size: 26px; font-weight: 700; padding: 2px 10px; letter-spacing: .02em; }
+.pips { display: flex; gap: 6px; margin: 0; }
+.pip { width: 30px; height: 30px; transform: none; background: transparent; border: 2px solid rgba(255,255,255,.65); }
+.pip.on { background: #fff2c4; border-color: #fff2c4; box-shadow: none; }
+.teamname { background: #fff; color: #0b0c10; font-size: 30px; font-weight: 600; padding: 2px 10px; max-width: 760px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hcenter { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.logo { font-size: 42px; font-weight: 700; line-height: 1.1; color: #fff; }
+.roundbox { background: #fff; color: #0b0c10; font-size: 22px; padding: 1px 10px; }
+
+#fields { top: 137px; bottom: 206px; gap: 0; display: flex; }
+.teamfields { display: flex !important; flex: 0 0 50%; flex-wrap: wrap; justify-content: center; align-content: center; gap: 0; }
+.teamfields[data-count="3"] { flex-wrap: wrap-reverse; }
+.field { flex: 0 0 auto; width: 480px; height: 360px; background: #0c1016; }
+.teamfields[data-count="1"] .field { width: 960px; height: 720px; }
+.field .bg { filter: brightness(.3); }
+.tag { display: contents; }
+.tag > span:first-child { position: absolute; right: 10px; bottom: 4px; font-size: 30px; font-weight: 600; font-style: italic; color: var(--team); z-index: 2; text-shadow: 0 1px 4px #000; }
+.tag .mods { position: absolute; right: 12px; top: 54px; font-size: 18px; color: #fff; z-index: 2; background: rgba(255,255,255,.14); padding: 1px 8px; }
+
+#scoreBars { position: absolute; left: 0; right: 0; bottom: 188px; height: 18px; display: flex; }
+.half { position: relative; flex: 1; }
+.half .line { position: absolute; left: 0; right: 0; top: 0; height: 6px; background: var(--team); }
+.half .lead { position: absolute; top: 0; bottom: 0; width: 100%; background: var(--team); transition: transform .3s linear; }
+.half.a .lead { right: 0; transform-origin: right; }
+.half.b .lead { left: 0; transform-origin: left; }
+#bigTotals { position: absolute; left: 0; right: 0; bottom: 104px; height: 84px; display: flex; background: #050507; }
+.big { flex: 1; display: flex; align-items: center; gap: 18px; padding: 0 22px; }
+.big.a { justify-content: flex-end; }
+.big b { font-size: 60px; font-weight: 700; line-height: 1; }
+.big small { font-size: 24px; color: var(--muted); }
+
+#nowPlaying { height: 104px; grid-template-columns: 50% 1fr 170px 300px; border-top: 0; background: #0a0b0f; }
+.mapbanner { padding: 16px 22px; background-size: cover; background-position: center; border-top: 5px solid var(--team, #3a70c4); display: flex; flex-direction: column; justify-content: center; gap: 4px; min-width: 0; }
+.mapbanner .title { font-size: 27px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mapbanner .sub { font-size: 19px; color: #d6d9e2; }
+.mapstats { display: grid; grid-template-columns: 1fr 1fr; align-content: center; gap: 6px 14px; padding: 0 20px; font-size: 19px; color: var(--muted); }
+.mapstats b { color: #fff; }
+.pickinfo { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 6px; color: #fff; }
+.pslot { font-size: 34px; font-weight: 700; color: var(--team, #fff); }
+.pby { font-size: 15px; color: var(--muted); }
+.ticker { font-size: 18px; padding: 8px 14px; }
+.hside.a { align-items: flex-start; }
+.teamfields { align-content: flex-end; }
